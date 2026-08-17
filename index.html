@@ -210,6 +210,26 @@
     </div>
   </div>
 
+  <div id="view-detail-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b pb-3">
+        <h2 id="view-title" class="text-base font-bold text-slate-800 flex items-center gap-2">
+          <span>🏥</span> รายละเอียดการลงพื้นที่
+        </h2>
+        <button onclick="closeViewModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">✕</button>
+      </div>
+      
+      <div id="view-content" class="space-y-3 text-xs text-slate-700">
+        </div>
+
+      <div class="flex justify-end pt-2 border-t border-slate-100">
+        <button onclick="closeViewModal()" class="px-5 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl">
+          ปิดหน้าต่าง
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const SUPABASE_URL = 'https://gvakjpngvhftmuzsxpyw.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_Z27zX48J2cPc2i3Xe1z_DA_MoLrTzGG';
@@ -241,21 +261,19 @@
     function initMap() {
       map = L.map('map').setView([17.8, 100.2], 9);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
+        attribution: '© OpenStreetMap contributors'
       }).addTo(map);
     }
 
     async function loadInitialData() {
       try {
         const { data, error } = await supabaseClient.from('hospitals').select('*');
-        
         if (error) throw error;
 
         if (!data || data.length === 0) {
           document.getElementById('hospital-list').innerHTML = `
             <div class="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center space-y-2">
               <p class="text-sm font-bold text-amber-800">⚠️ ไม่พบข้อมูลในตาราง hospitals</p>
-              <p class="text-xs text-amber-600">กรุณาตรวจสอบว่าได้ทำการ INSERT ข้อมูลใน Supabase แล้วหรือยัง</p>
             </div>`;
           return;
         }
@@ -269,7 +287,7 @@
         document.getElementById('hospital-list').innerHTML = `
           <div class="bg-red-50 border border-red-200 rounded-2xl p-6 text-center space-y-2">
             <p class="text-sm font-bold text-red-700">❌ ดึงข้อมูลไม่สำเร็จ</p>
-            <p class="text-xs text-red-600">${err.message || 'กรุณาตรวจสอบการตั้งค่า RLS ใน Supabase'}</p>
+            <p class="text-xs text-red-600">${err.message || ''}</p>
           </div>`;
       }
     }
@@ -277,7 +295,6 @@
     function populateProvinces() {
       const provinceSelect = document.getElementById('province-select');
       const provinces = [...new Set(rawHospitals.map(item => item.province).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'th'));
-      
       provinceSelect.innerHTML = '<option value="">-- ทุกจังหวัด --</option>';
       provinces.forEach(p => { provinceSelect.innerHTML += `<option value="${p}">${p}</option>`; });
       populateDistricts();
@@ -286,7 +303,6 @@
     function populateTypes() {
       const typeSelect = document.getElementById('type-select');
       const types = [...new Set(rawHospitals.map(item => item.type).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'th'));
-      
       typeSelect.innerHTML = '<option value="">-- ทุกประเภท --</option>';
       types.forEach(t => { typeSelect.innerHTML += `<option value="${t}">${t}</option>`; });
     }
@@ -304,7 +320,6 @@
       if (selectedProvince) filtered = filtered.filter(item => item.province === selectedProvince);
 
       const districts = [...new Set(filtered.map(item => item.district).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'th'));
-
       districtSelect.innerHTML = '<option value="">-- ทุกอำเภอ --</option>';
       districts.forEach(d => { districtSelect.innerHTML += `<option value="${d}">${d}</option>`; });
       populateSubdistricts();
@@ -325,7 +340,6 @@
       if (selectedDistrict) filtered = filtered.filter(item => item.district === selectedDistrict);
 
       const subdistricts = [...new Set(filtered.map(item => item.subdistrict).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'th'));
-
       subdistrictSelect.innerHTML = '<option value="">-- ทุกตำบล --</option>';
       subdistricts.forEach(sd => { subdistrictSelect.innerHTML += `<option value="${sd}">${sd}</option>`; });
     }
@@ -339,7 +353,6 @@
       const sortVal = document.getElementById('sort-select').value;
       const searchText = document.getElementById('search-input').value.trim().toLowerCase();
 
-      // 1. กรองตามพื้นที่/ประเภท/คำค้นหา เพื่อคำนวณ Dashboard ของพื้นที่นั้น
       let scopeData = [...rawHospitals];
 
       if (selectedProvince) scopeData = scopeData.filter(item => item.province === selectedProvince);
@@ -348,13 +361,11 @@
       if (selectedType) scopeData = scopeData.filter(item => item.type === selectedType);
       if (searchText) scopeData = scopeData.filter(item => item.name && item.name.toLowerCase().includes(searchText));
 
-      // 2. คำนวณตัวเลข Dashboard จากพื้นที่ที่เลือก
       const total = scopeData.length;
       const checkedCount = scopeData.filter(item => item.is_checked).length;
       const pendingCount = total - checkedCount;
       const percent = total > 0 ? Math.round((checkedCount / total) * 100) : 0;
 
-      // 3. อัปเดตตัวเลขการ์ดและ Progress Bar
       document.getElementById('stat-total').innerText = total;
       document.getElementById('stat-checked').innerText = checkedCount;
       document.getElementById('stat-pending').innerText = pendingCount;
@@ -362,16 +373,13 @@
       document.getElementById('progress-text').innerText = `${percent}%`;
       document.getElementById('progress-bar').style.width = `${percent}%`;
 
-      // 4. กรองสถานะเพิ่มเติม (ทั้งหมด / ทำแล้ว / ยังไม่ทำ) สำหรับรายการที่จะแสดงผล
       let filteredData = [...scopeData];
       if (filterVal === 'pending') filteredData = filteredData.filter(item => !item.is_checked);
       else if (filterVal === 'checked') filteredData = filteredData.filter(item => item.is_checked);
 
-      // 5. เรียงลำดับข้อมูล
       if (sortVal === 'id-asc') filteredData.sort((a, b) => a.id - b.id);
       else if (sortVal === 'name-asc') filteredData.sort((a, b) => a.name.localeCompare(b.name, 'th'));
 
-      // 6. วาด หมุด (Pins) บนแผนที่
       markers.forEach(m => map.removeLayer(m));
       markers = [];
       const bounds = [];
@@ -401,7 +409,6 @@
 
       if (bounds.length > 0) map.fitBounds(bounds, { padding: [30, 30] });
 
-      // 7. แสดงผลรายการ รพ.สต. ใน List
       const listDiv = document.getElementById('hospital-list');
       listDiv.innerHTML = '';
 
@@ -436,19 +443,18 @@
                 ${item.type ? `<span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-semibold">${item.type}</span>` : ''}
               </div>
               <p class="text-xs text-slate-500 font-medium pl-4.5">📍 ${fullAddress || 'ไม่มีข้อมูลที่อยู่'}</p>
-              ${item.latitude && item.longitude ? `
-                <div class="pl-4.5 pt-0.5">
-                  <a href="https://maps.google.com/?q=${item.latitude},${item.longitude}" target="_blank" class="text-[11px] text-blue-600 hover:underline font-semibold flex items-center gap-1">
-                    🗺️ ดูแผนที่ GPS (${parseFloat(item.latitude).toFixed(4)}, ${parseFloat(item.longitude).toFixed(4)})
-                  </a>
-                </div>
-              ` : ''}
             </div>
-            <label class="relative flex items-center p-1 rounded-lg cursor-pointer">
-              <input type="checkbox" ${item.is_checked ? 'checked' : ''} 
-                     onchange="handleCheckChange(${item.id}, this.checked)"
-                     class="w-6 h-6 text-emerald-600 rounded-lg border-slate-300 cursor-pointer accent-emerald-600">
-            </label>
+            
+            <div class="flex items-center gap-2">
+              <button onclick="openViewModal(${item.id})" class="px-2.5 py-1 text-[11px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors">
+                👁️ ดูรายละเอียด
+              </button>
+              <label class="relative flex items-center p-1 rounded-lg cursor-pointer">
+                <input type="checkbox" ${item.is_checked ? 'checked' : ''} 
+                       onchange="handleCheckChange(${item.id}, this.checked)"
+                       class="w-6 h-6 text-emerald-600 rounded-lg border-slate-300 cursor-pointer accent-emerald-600">
+              </label>
+            </div>
           </div>
         `;
 
@@ -476,7 +482,15 @@
         currentHospitalId = id;
         openModal();
       } else {
-        resetCheckin(id);
+        // แจ้งเตือน Alert YES / NO เพื่อยืนยันการยกเลิกรายการ
+        const item = rawHospitals.find(h => h.id === id);
+        const confirmCancel = confirm(`⚠️ คุณต้องการยกเลิกการลงพื้นที่ของ "${item ? item.name : 'รายการนี้'}" ใช่หรือไม่?\n\n(หากยกเลิก รูปภาพแนบและข้อมูลการเช็คอินจะถูกลบทันที)`);
+        
+        if (confirmCancel) {
+          resetCheckin(id);
+        } else {
+          refreshData(); // หากเลือก Cancel ให้คืนค่า Checkbox กลับมาติ๊กถูกเช่นเดิม
+        }
       }
     }
 
@@ -545,11 +559,76 @@
       closeModal();
     }
 
+    // ฟังก์ชันยกเลิกการลงพื้นที่ และลบรูปจาก Storage
     async function resetCheckin(id) {
+      const item = rawHospitals.find(h => h.id === id);
+
+      // ถ้ามีรูปภาพ ให้ทำการลบไฟล์ออกจาก Supabase Storage
+      if (item && item.image_url) {
+        try {
+          const pathParts = item.image_url.split('/hospital-photos/');
+          if (pathParts.length > 1) {
+            const fileName = pathParts[1];
+            await supabaseClient.storage.from('hospital-photos').remove([fileName]);
+          }
+        } catch (e) {
+          console.error("ลบรูปภาพไม่สำเร็จ:", e);
+        }
+      }
+
+      // รีเซ็ตค่าใน Database
       await supabaseClient.from('hospitals').update({
         is_checked: false, checked_at: null, actual_lat: null, actual_lng: null, image_url: null, text_detail: null, note: null
       }).eq('id', id);
+
       refreshData();
+    }
+
+    // ฟังก์ชันสำหรับเปิดดูรายละเอียดข้อมูล (View Detail)
+    function openViewModal(id) {
+      const item = rawHospitals.find(h => h.id === id);
+      if (!item) return;
+
+      document.getElementById('view-title').innerText = `🏥 ${item.name}`;
+      
+      const fullAddress = [
+        item.subdistrict ? `ต.${item.subdistrict}` : null,
+        item.district ? `อ.${item.district}` : null,
+        item.province ? `จ.${item.province}` : null
+      ].filter(Boolean).join(' ');
+
+      let html = `
+        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-1">
+          <p class="font-bold text-slate-800 text-sm">${item.name} ${item.type ? `<span class="text-xs bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md">${item.type}</span>` : ''}</p>
+          <p class="text-slate-600">📍 ที่อยู่: ${fullAddress || 'ไม่มีข้อมูล'}</p>
+          ${item.latitude && item.longitude ? `<p class="text-slate-500">🗺️ พิกัดตั้งต้น: ${item.latitude}, ${item.longitude}</p>` : ''}
+        </div>
+
+        <div class="p-3 rounded-2xl border ${item.is_checked ? 'bg-emerald-50/50 border-emerald-200' : 'bg-amber-50/50 border-amber-200'} space-y-2">
+          <p class="font-bold ${item.is_checked ? 'text-emerald-800' : 'text-amber-800'} text-xs">
+            สถานะ: ${item.is_checked ? '🟢 ลงพื้นที่แล้ว' : '🔴 ยังไม่ได้ลงพื้นที่'}
+          </p>
+          ${item.is_checked ? `
+            <p class="text-slate-600">⏰ ลงพื้นที่เมื่อ: ${item.checked_at ? new Date(item.checked_at).toLocaleString('th-TH') : '-'}</p>
+            ${item.actual_lat ? `<p class="text-slate-600">📍 พิกัดลงพื้นที่จริง: ${item.actual_lat.toFixed(5)}, ${item.actual_lng.toFixed(5)} <a href="https://maps.google.com/?q=${item.actual_lat},${item.actual_lng}" target="_blank" class="text-blue-600 underline font-bold ml-1">[ดูแผนที่]</a></p>` : ''}
+            ${item.text_detail ? `<p class="text-slate-700 font-semibold border-t border-slate-200/60 pt-2">💬 รายละเอียด: <span class="font-normal text-slate-600">${item.text_detail}</span></p>` : ''}
+            ${item.note ? `<p class="text-slate-700 font-semibold">📝 หมายเหตุ: <span class="font-normal text-slate-600">${item.note}</span></p>` : ''}
+            ${item.image_url ? `
+              <div class="pt-2">
+                <p class="font-semibold text-slate-700 mb-1">📷 รูปภาพสถานที่จริง:</p>
+                <img src="${item.image_url}" class="w-full max-h-64 object-cover rounded-xl border border-slate-200 shadow-sm">
+              </div>
+            ` : '<p class="text-slate-400 italic pt-1">ไม่มีรูปภาพแนบ</p>'}
+          ` : ''}
+        </div>
+      `;
+
+      document.getElementById('view-content').innerHTML = html;
+      document.getElementById('view-detail-modal').classList.remove('hidden');
+    }
+
+    function closeViewModal() {
+      document.getElementById('view-detail-modal').classList.add('hidden');
     }
 
     async function refreshData() {

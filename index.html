@@ -16,7 +16,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
-    /* Custom Marker Styles */
+    /* Custom Pin Marker Styles */
     .custom-pin {
       width: 24px;
       height: 24px;
@@ -53,7 +53,7 @@
         </div>
         <div>
           <h1 class="text-lg sm:text-xl font-bold tracking-wide">รายงานการลงพื้นที่ รพ.สต.</h1>
-          <p class="text-xs text-blue-100 hidden sm:block">ระบบติดตามการปฏิบัติงาน เช็คอินพิกัด GPS และแผนที่จำแนกสถานะ</p>
+          <p class="text-xs text-blue-100 hidden sm:block">ระบบติดตามการปฏิบัติงาน กรองพื้นที่ จังหวัด/อำเภอ/ตำบล และแสดงพิกัดแผนที่</p>
         </div>
       </div>
       <div>
@@ -105,7 +105,7 @@
         <div class="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm space-y-3">
           <div class="flex items-center justify-between">
             <h2 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-              📍 แผนที่แสดงตำแหน่ง รพ.สต.
+              📍 แผนที่พิกัด รพ.สต.
             </h2>
             <div class="flex gap-2 text-[11px]">
               <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> ยังไม่ทำ</span>
@@ -117,29 +117,62 @@
 
       </section>
 
-
-      <!-- RIGHT COLUMN: Checklist & Filters -->
+      <!-- RIGHT COLUMN: Checklist & Cascading Filters -->
       <section class="lg:col-span-7 bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
         
         <!-- Controls & Filters Header -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-3">
-          <div>
-            <h2 class="text-base sm:text-lg font-bold text-slate-800">📝 รายชื่อ รพ.สต.</h2>
-            <p class="text-xs text-slate-400">เลือกกรองข้อมูลเพื่อซ่อนหรือแสดงรายการตามสถานะ</p>
+        <div class="flex flex-col gap-3 pb-4 border-b border-slate-100">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-base sm:text-lg font-bold text-slate-800">📝 รายชื่อ รพ.สต.</h2>
+              <p class="text-xs text-slate-400">เลือกกรองตาม จังหวัด, อำเภอ, ตำบล และสถานะการลงพื้นที่</p>
+            </div>
           </div>
-          
-          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-            <!-- Filter Option -->
-            <select id="filter-select" onchange="fetchHospitals()" class="text-xs border border-slate-200 rounded-xl p-2 bg-slate-50 text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
-              <option value="pending">🔴 ยังไม่ได้ลงพื้นที่ (ซ่อนรายการที่ทำแล้ว)</option>
+
+          <!-- Section: Geographic Filters (จังหวัด/อำเภอ/ตำบล) -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
+            <!-- Filter Province -->
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 mb-1">🏛️ จังหวัด</label>
+              <select id="province-select" onchange="onProvinceChange()" class="w-full text-xs border border-slate-200 rounded-xl p-2 bg-white text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+                <option value="">-- ทุกจังหวัด --</option>
+              </select>
+            </div>
+
+            <!-- Filter District -->
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 mb-1">🏢 อำเภอ</label>
+              <select id="district-select" onchange="onDistrictChange()" class="w-full text-xs border border-slate-200 rounded-xl p-2 bg-white text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+                <option value="">-- ทุกอำเภอ --</option>
+              </select>
+            </div>
+
+            <!-- Filter Subdistrict -->
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 mb-1">🏡 ตำบล</label>
+              <select id="subdistrict-select" onchange="applyFilters()" class="w-full text-xs border border-slate-200 rounded-xl p-2 bg-white text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+                <option value="">-- ทุกตำบล --</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Section: Status Filter & Search -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <!-- Search Text -->
+            <input type="text" id="search-input" onkeyup="applyFilters()" placeholder="🔍 ค้นหาชื่อ รพ.สต..." class="text-xs border border-slate-200 rounded-xl p-2.5 bg-slate-50 text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+
+            <!-- Filter Status -->
+            <select id="filter-select" onchange="applyFilters()" class="text-xs border border-slate-200 rounded-xl p-2.5 bg-slate-50 text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+              <option value="pending">🔴 ยังไม่ได้ลงพื้นที่ (ซ่อนที่ทำแล้ว)</option>
               <option value="checked">🟢 ลงพื้นที่แล้วเท่านั้น</option>
-              <option value="all">🌐 แสดงรายการทั้งหมด</option>
+              <option value="all">🌐 แสดงทั้งหมด</option>
             </select>
 
             <!-- Sorting Option -->
-            <select id="sort-select" onchange="fetchHospitals()" class="text-xs border border-slate-200 rounded-xl p-2 bg-slate-50 text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+            <select id="sort-select" onchange="applyFilters()" class="text-xs border border-slate-200 rounded-xl p-2.5 bg-slate-50 text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
               <option value="id-asc">เรียงตามลำดับ ID</option>
               <option value="name-asc">เรียงตามชื่อ (ก-ฮ)</option>
+              <option value="district-asc">เรียงตามอำเภอ/ตำบล</option>
             </select>
           </div>
         </div>
@@ -162,7 +195,7 @@
     <div class="bg-white rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl border border-slate-100">
       
       <div class="flex items-center justify-between border-b pb-3">
-        <h2 id="modal-title" class="text-base font-bold text-slate-800 flex items-center gap-2">
+        <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
           <span>📍</span> บันทึกการลงพื้นที่เช็คอิน
         </h2>
         <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">✕</button>
@@ -170,7 +203,7 @@
       
       <div class="space-y-4">
         <div class="bg-blue-50/60 border border-blue-100 rounded-xl p-3">
-          <label class="block text-xs font-semibold text-blue-900 mb-1">พิกัด GPS ปัจจุบัน</label>
+          <label class="block text-xs font-semibold text-blue-900 mb-1">พิกัด GPS ที่ลงพื้นที่จริง</label>
           <p id="gps-status" class="text-xs text-blue-700 font-medium flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
             กำลังค้นหาตำแหน่ง GPS...
@@ -207,9 +240,10 @@
     const SUPABASE_KEY = 'sb_publishable_Z27zX48J2cPc2i3Xe1z_DA_MoLrTzGG';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    let rawHospitals = []; // ข้อมูลทั้งหมดที่ดึงมาจาก Supabase
     let currentHospitalId = null;
-    let currentLat = null;
-    let currentLng = null;
+    let actualLat = null;
+    let actualLng = null;
     let map = null;
     let markers = [];
 
@@ -231,31 +265,104 @@
     });
 
     function initMap() {
-      map = L.map('map').setView([17.0078, 99.8234], 11);
+      map = L.map('map').setView([17.0078, 99.8234], 10);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
     }
 
-    async function fetchHospitals() {
-      const filterVal = document.getElementById('filter-select').value;
-      const sortVal = document.getElementById('sort-select').value;
-
-      // ดึงข้อมูลทั้งหมดเพื่อคำนวณ Dashboard Summary
-      const { data: allData, error: fetchErr } = await supabaseClient.from('hospitals').select('*');
-      
-      if (fetchErr) {
-        console.error("Supabase Error:", fetchErr);
+    // โหลดข้อมูลครั้งแรกจาก Supabase
+    async function loadInitialData() {
+      const { data, error } = await supabaseClient.from('hospitals').select('*');
+      if (error) {
+        console.error("Supabase Fetch Error:", error);
         document.getElementById('hospital-list').innerHTML = `
           <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
-            <p class="text-xs text-red-600 font-semibold">ไม่สามารถโหลดข้อมูลได้ (${fetchErr.message})</p>
+            <p class="text-xs text-red-600 font-semibold">ไม่สามารถโหลดข้อมูลได้ (${error.message})</p>
           </div>`;
         return;
       }
 
-      // คำนวณสถิติ
-      const total = allData.length;
-      const checkedCount = allData.filter(item => item.is_checked).length;
+      rawHospitals = data || [];
+      populateProvinces();
+      applyFilters();
+    }
+
+    // สร้างตัวเลือก จังหวัด ใน Dropdown
+    function populateProvinces() {
+      const provinceSelect = document.getElementById('province-select');
+      const provinces = [...new Set(rawHospitals.map(item => item.province).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'th'));
+      
+      provinceSelect.innerHTML = '<option value="">-- ทุกจังหวัด --</option>';
+      provinces.forEach(p => {
+        provinceSelect.innerHTML += `<option value="${p}">${p}</option>`;
+      });
+
+      populateDistricts();
+    }
+
+    // เมื่อเปลี่ยน จังหวัด ให้เปลี่ยนตัวเลือก อำเภอ
+    function onProvinceChange() {
+      populateDistricts();
+      applyFilters();
+    }
+
+    // สร้างตัวเลือก อำเภอ ใน Dropdown
+    function populateDistricts() {
+      const selectedProvince = document.getElementById('province-select').value;
+      const districtSelect = document.getElementById('district-select');
+
+      let filtered = rawHospitals;
+      if (selectedProvince) {
+        filtered = filtered.filter(item => item.province === selectedProvince);
+      }
+
+      const districts = [...new Set(filtered.map(item => item.district).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'th'));
+
+      districtSelect.innerHTML = '<option value="">-- ทุกอำเภอ --</option>';
+      districts.forEach(d => {
+        districtSelect.innerHTML += `<option value="${d}">${d}</option>`;
+      });
+
+      populateSubdistricts();
+    }
+
+    // เมื่อเปลี่ยน อำเภอ ให้เปลี่ยนตัวเลือก ตำบล
+    function onDistrictChange() {
+      populateSubdistricts();
+      applyFilters();
+    }
+
+    // สร้างตัวเลือก ตำบล ใน Dropdown
+    function populateSubdistricts() {
+      const selectedProvince = document.getElementById('province-select').value;
+      const selectedDistrict = document.getElementById('district-select').value;
+      const subdistrictSelect = document.getElementById('subdistrict-select');
+
+      let filtered = rawHospitals;
+      if (selectedProvince) filtered = filtered.filter(item => item.province === selectedProvince);
+      if (selectedDistrict) filtered = filtered.filter(item => item.district === selectedDistrict);
+
+      const subdistricts = [...new Set(filtered.map(item => item.subdistrict).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'th'));
+
+      subdistrictSelect.innerHTML = '<option value="">-- ทุกตำบล --</option>';
+      subdistricts.forEach(sd => {
+        subdistrictSelect.innerHTML += `<option value="${sd}">${sd}</option>`;
+      });
+    }
+
+    // กรองและประมวลผลข้อมูลแสดงผล
+    function applyFilters() {
+      const selectedProvince = document.getElementById('province-select').value;
+      const selectedDistrict = document.getElementById('district-select').value;
+      const selectedSubdistrict = document.getElementById('subdistrict-select').value;
+      const filterVal = document.getElementById('filter-select').value;
+      const sortVal = document.getElementById('sort-select').value;
+      const searchText = document.getElementById('search-input').value.trim().toLowerCase();
+
+      // 1. คำนวณ Dashboard Summary
+      const total = rawHospitals.length;
+      const checkedCount = rawHospitals.filter(item => item.is_checked).length;
       const pendingCount = total - checkedCount;
       const percent = total > 0 ? Math.round((checkedCount / total) * 100) : 0;
 
@@ -266,60 +373,77 @@
       document.getElementById('progress-text').innerText = `${percent}%`;
       document.getElementById('progress-bar').style.width = `${percent}%`;
 
-      // อัปเดตหมุดแผนที่ (แสดงหมุดของทุกสถานที่ พร้อมเปลี่ยนสี เขียว/แดง)
+      // 2. กรองข้อมูลตามพื้นที่และเงื่อนไข
+      let filteredData = [...rawHospitals];
+
+      if (selectedProvince) filteredData = filteredData.filter(item => item.province === selectedProvince);
+      if (selectedDistrict) filteredData = filteredData.filter(item => item.district === selectedDistrict);
+      if (selectedSubdistrict) filteredData = filteredData.filter(item => item.subdistrict === selectedSubdistrict);
+
+      if (filterVal === 'pending') {
+        filteredData = filteredData.filter(item => !item.is_checked);
+      } else if (filterVal === 'checked') {
+        filteredData = filteredData.filter(item => item.is_checked);
+      }
+
+      if (searchText) {
+        filteredData = filteredData.filter(item => 
+          (item.name && item.name.toLowerCase().includes(searchText))
+        );
+      }
+
+      // 3. จัดเรียงข้อมูล
+      if (sortVal === 'id-asc') {
+        filteredData.sort((a, b) => a.id - b.id);
+      } else if (sortVal === 'name-asc') {
+        filteredData.sort((a, b) => a.name.localeCompare(b.name, 'th'));
+      } else if (sortVal === 'district-asc') {
+        filteredData.sort((a, b) => (a.district || '').localeCompare(b.district || '', 'th'));
+      }
+
+      // 4. อัปเดตแผนที่ (แสดงเฉพาะรายการที่กรองแล้ว)
       markers.forEach(m => map.removeLayer(m));
       markers = [];
       const bounds = [];
 
-      allData.forEach(item => {
-        if (item.latitude && item.longitude) {
+      filteredData.forEach(item => {
+        const lat = item.latitude;
+        const lng = item.longitude;
+
+        if (lat && lng) {
           const icon = item.is_checked ? greenIcon : redIcon;
-          const statusText = item.is_checked ? '🟢 ลงพื้นที่แล้ว' : '🔴 ยังไม่ได้ลงพื้นที่';
-          
-          const marker = L.marker([item.latitude, item.longitude], { icon: icon }).addTo(map);
+          const statusBadge = item.is_checked ? '🟢 ลงพื้นที่แล้ว' : '🔴 ยังไม่ได้ลงพื้นที่';
+          const address = `ต.${item.subdistrict || '-'} อ.${item.district || '-'} จ.${item.province || '-'}`;
+
+          const marker = L.marker([lat, lng], { icon: icon }).addTo(map);
           marker.bindPopup(`
             <div class="text-xs font-sans space-y-1">
-              <b class="text-sm">${item.name}</b>
-              <p class="text-slate-500">${item.area || ''}</p>
-              <p class="font-semibold">${statusText}</p>
+              <b class="text-sm font-bold text-slate-800">${item.name}</b>
+              <p class="text-slate-600">${address}</p>
+              <p class="font-semibold pt-1">${statusBadge}</p>
+              <a href="https://maps.google.com/?q=${lat},${lng}" target="_blank" class="inline-block mt-1 text-blue-600 underline font-bold">🗺️ นำทางด้วย Google Maps</a>
             </div>
           `);
           markers.push(marker);
-          bounds.push([item.latitude, item.longitude]);
+          bounds.push([lat, lng]);
         }
       });
 
       if (bounds.length > 0) map.fitBounds(bounds, { padding: [30, 30] });
 
-      // กรองข้อมูลรายการที่จะแสดงใน Checklist
-      let displayData = [...allData];
-      if (filterVal === 'pending') {
-        displayData = displayData.filter(item => !item.is_checked);
-      } else if (filterVal === 'checked') {
-        displayData = displayData.filter(item => item.is_checked);
-      }
-
-      // จัดเรียงข้อมูล
-      if (sortVal === 'id-asc') {
-        displayData.sort((a, b) => a.id - b.id);
-      } else if (sortVal === 'name-asc') {
-        displayData.sort((a, b) => a.name.localeCompare(b.name, 'th'));
-      }
-
-      // แสดงผลรายการ
+      // 5. แสดงรายการใน Checklist
       const listDiv = document.getElementById('hospital-list');
       listDiv.innerHTML = '';
 
-      if (displayData.length === 0) {
+      if (filteredData.length === 0) {
         listDiv.innerHTML = `
           <div class="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-            <p class="text-sm font-semibold text-slate-500">🎉 ไม่พบรายการในหมวดนี้</p>
-            <p class="text-xs text-slate-400 mt-1">ทุกสถานที่ได้รับการปฏิบัติงานตามเงื่อนไขเรียบร้อยแล้ว</p>
+            <p class="text-sm font-semibold text-slate-500">🎉 ไม่พบรายการตรงตามเงื่อนไขที่เลือก</p>
           </div>`;
         return;
       }
 
-      displayData.forEach(item => {
+      filteredData.forEach(item => {
         const div = document.createElement('div');
         div.className = `p-4 border rounded-2xl space-y-3 transition-all ${
           item.is_checked 
@@ -327,14 +451,27 @@
             : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
         }`;
         
+        const fullAddress = [
+          item.subdistrict ? `ต.${item.subdistrict}` : null,
+          item.district ? `อ.${item.district}` : null,
+          item.province ? `จ.${item.province}` : null
+        ].filter(Boolean).join(' ');
+
         let content = `
           <div class="flex items-start justify-between gap-3">
-            <div class="space-y-0.5">
+            <div class="space-y-1">
               <div class="flex items-center gap-2">
                 <span class="w-2.5 h-2.5 rounded-full ${item.is_checked ? 'bg-emerald-500' : 'bg-red-500'}"></span>
                 <p class="font-bold text-sm ${item.is_checked ? 'text-emerald-950' : 'text-slate-800'}">${item.name}</p>
               </div>
-              <p class="text-xs text-slate-500 font-medium pl-4.5">${item.area || 'ไม่มีข้อมูลพื้นที่'}</p>
+              <p class="text-xs text-slate-500 font-medium pl-4.5">📍 ${fullAddress || 'ไม่มีข้อมูลที่อยู่'}</p>
+              ${item.latitude && item.longitude ? `
+                <div class="pl-4.5 pt-0.5">
+                  <a href="https://maps.google.com/?q=${item.latitude},${item.longitude}" target="_blank" class="text-[11px] text-blue-600 hover:underline font-semibold flex items-center gap-1">
+                    🗺️ ดูแผนที่ GPS (${item.latitude.toFixed(4)}, ${item.longitude.toFixed(4)})
+                  </a>
+                </div>
+              ` : ''}
             </div>
             <label class="relative flex items-center p-1 rounded-lg cursor-pointer">
               <input type="checkbox" ${item.is_checked ? 'checked' : ''} 
@@ -348,8 +485,8 @@
           content += `
             <div class="text-xs text-slate-600 bg-white p-3 rounded-xl border border-emerald-100 space-y-2 shadow-inner">
               <div class="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-500">
-                <span>⏰ เวลาเช็คอิน: ${new Date(item.checked_at).toLocaleString('th-TH')}</span>
-                ${item.latitude ? `<a href="https://maps.google.com/?q=${item.latitude},${item.longitude}" target="_blank" class="text-blue-600 font-bold underline">📍 ดูบน Google Maps</a>` : ''}
+                <span>⏰ เวลาลงพื้นที่: ${new Date(item.checked_at).toLocaleString('th-TH')}</span>
+                ${item.actual_lat ? `<a href="https://maps.google.com/?q=${item.actual_lat},${item.actual_lng}" target="_blank" class="text-emerald-700 font-bold underline">📍 พิกัดลงพื้นที่จริง</a>` : ''}
               </div>
               ${item.note ? `<p class="text-slate-700 pt-1 border-t border-slate-100">📝 <span class="font-medium">หมายเหตุ:</span> ${item.note}</p>` : ''}
               ${item.image_url ? `<div class="pt-1"><img src="${item.image_url}" class="w-full h-40 object-cover rounded-xl border border-slate-200"></div>` : ''}
@@ -380,9 +517,9 @@
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
-            currentLat = pos.coords.latitude;
-            currentLng = pos.coords.longitude;
-            document.getElementById('gps-status').innerText = `📍 พิกัด: ${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`;
+            actualLat = pos.coords.latitude;
+            actualLng = pos.coords.longitude;
+            document.getElementById('gps-status').innerText = `📍 พิกัดปัจจุบัน: ${actualLat.toFixed(5)}, ${actualLng.toFixed(5)}`;
           },
           () => { document.getElementById('gps-status').innerText = '⚠️ ไม่สามารถดึงตำแหน่ง GPS ได้'; }
         );
@@ -391,7 +528,7 @@
 
     function closeModal() {
       document.getElementById('checkin-modal').classList.add('hidden');
-      fetchHospitals();
+      refreshData();
     }
 
     async function saveCheckin() {
@@ -422,8 +559,8 @@
       await supabaseClient.from('hospitals').update({
         is_checked: true,
         checked_at: new Date().toISOString(),
-        latitude: currentLat,
-        longitude: currentLng,
+        actual_lat: actualLat,
+        actual_lng: actualLng,
         image_url: imageUrl,
         note: note
       }).eq('id', currentHospitalId);
@@ -435,13 +572,21 @@
 
     async function resetCheckin(id) {
       await supabaseClient.from('hospitals').update({
-        is_checked: false, checked_at: null, latitude: null, longitude: null, image_url: null, note: null
+        is_checked: false, checked_at: null, actual_lat: null, actual_lng: null, image_url: null, note: null
       }).eq('id', id);
-      fetchHospitals();
+      refreshData();
+    }
+
+    async function refreshData() {
+      const { data } = await supabaseClient.from('hospitals').select('*');
+      if (data) {
+        rawHospitals = data;
+        applyFilters();
+      }
     }
 
     initMap();
-    fetchHospitals();
+    loadInitialData();
   </script>
 </body>
 </html>

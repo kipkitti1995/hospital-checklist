@@ -211,7 +211,6 @@
   </div>
 
   <script>
-    // ตั้งค่า URL และ Key ของคุณแล้ว
     const SUPABASE_URL = 'https://gvakjpngvhftmuzsxpyw.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_Z27zX48J2cPc2i3Xe1z_DA_MoLrTzGG';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -340,11 +339,22 @@
       const sortVal = document.getElementById('sort-select').value;
       const searchText = document.getElementById('search-input').value.trim().toLowerCase();
 
-      const total = rawHospitals.length;
-      const checkedCount = rawHospitals.filter(item => item.is_checked).length;
+      // 1. กรองตามพื้นที่/ประเภท/คำค้นหา เพื่อคำนวณ Dashboard ของพื้นที่นั้น
+      let scopeData = [...rawHospitals];
+
+      if (selectedProvince) scopeData = scopeData.filter(item => item.province === selectedProvince);
+      if (selectedDistrict) scopeData = scopeData.filter(item => item.district === selectedDistrict);
+      if (selectedSubdistrict) scopeData = scopeData.filter(item => item.subdistrict === selectedSubdistrict);
+      if (selectedType) scopeData = scopeData.filter(item => item.type === selectedType);
+      if (searchText) scopeData = scopeData.filter(item => item.name && item.name.toLowerCase().includes(searchText));
+
+      // 2. คำนวณตัวเลข Dashboard จากพื้นที่ที่เลือก
+      const total = scopeData.length;
+      const checkedCount = scopeData.filter(item => item.is_checked).length;
       const pendingCount = total - checkedCount;
       const percent = total > 0 ? Math.round((checkedCount / total) * 100) : 0;
 
+      // 3. อัปเดตตัวเลขการ์ดและ Progress Bar
       document.getElementById('stat-total').innerText = total;
       document.getElementById('stat-checked').innerText = checkedCount;
       document.getElementById('stat-pending').innerText = pendingCount;
@@ -352,23 +362,16 @@
       document.getElementById('progress-text').innerText = `${percent}%`;
       document.getElementById('progress-bar').style.width = `${percent}%`;
 
-      let filteredData = [...rawHospitals];
-
-      if (selectedProvince) filteredData = filteredData.filter(item => item.province === selectedProvince);
-      if (selectedDistrict) filteredData = filteredData.filter(item => item.district === selectedDistrict);
-      if (selectedSubdistrict) filteredData = filteredData.filter(item => item.subdistrict === selectedSubdistrict);
-      if (selectedType) filteredData = filteredData.filter(item => item.type === selectedType);
-
+      // 4. กรองสถานะเพิ่มเติม (ทั้งหมด / ทำแล้ว / ยังไม่ทำ) สำหรับรายการที่จะแสดงผล
+      let filteredData = [...scopeData];
       if (filterVal === 'pending') filteredData = filteredData.filter(item => !item.is_checked);
       else if (filterVal === 'checked') filteredData = filteredData.filter(item => item.is_checked);
 
-      if (searchText) {
-        filteredData = filteredData.filter(item => item.name && item.name.toLowerCase().includes(searchText));
-      }
-
+      // 5. เรียงลำดับข้อมูล
       if (sortVal === 'id-asc') filteredData.sort((a, b) => a.id - b.id);
       else if (sortVal === 'name-asc') filteredData.sort((a, b) => a.name.localeCompare(b.name, 'th'));
 
+      // 6. วาด หมุด (Pins) บนแผนที่
       markers.forEach(m => map.removeLayer(m));
       markers = [];
       const bounds = [];
@@ -398,6 +401,7 @@
 
       if (bounds.length > 0) map.fitBounds(bounds, { padding: [30, 30] });
 
+      // 7. แสดงผลรายการ รพ.สต. ใน List
       const listDiv = document.getElementById('hospital-list');
       listDiv.innerHTML = '';
 

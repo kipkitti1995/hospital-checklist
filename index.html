@@ -109,11 +109,12 @@
   </div>
 
   <script>
-    // ใส่ Supabase Credentials ของคุณที่นี่
+    // ตั้งค่า Supabase credentials
     const SUPABASE_URL = 'https://gvakjpngvhftmuzsxpyw.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_Z27zX48J2cPc2i3Xe1z_DA_MoLrTzGG';
     
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // ประกาศชื่อตัวแปรเป็น supabaseClient เพื่อป้องกันปัญหาชื่อชนกับ SDK
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let currentHospitalId = null;
     let currentLat = null;
@@ -130,7 +131,7 @@
 
     async function fetchHospitals() {
       const sortVal = document.getElementById('sort-select').value;
-      let query = supabase.from('hospitals').select('*');
+      let query = supabaseClient.from('hospitals').select('*');
 
       if (sortVal === 'id-asc') {
         query = query.order('id', { ascending: true });
@@ -145,7 +146,8 @@
       const { data, error } = await query;
       
       if (error) {
-        document.getElementById('hospital-list').innerHTML = `<p class="text-xs text-red-500 text-center py-4">ไม่สามารถโหลดข้อมูลได้ กรุณาเช็คการตั้งค่า Supabase Key</p>`;
+        console.error("Supabase Fetch Error:", error);
+        document.getElementById('hospital-list').innerHTML = `<p class="text-xs text-red-500 text-center py-4">ไม่สามารถโหลดข้อมูลได้ (${error.message || 'Error'})</p>`;
         return;
       }
 
@@ -253,19 +255,19 @@
         const file = fileInput.files[0];
         const fileName = `${currentHospitalId}_${Date.now()}.${file.name.split('.').pop()}`;
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { data: uploadData, error: uploadError } = await supabaseClient.storage
           .from('hospital-photos')
           .upload(fileName, file);
 
         if (!uploadError) {
-          const { data: publicUrlData } = supabase.storage
+          const { data: publicUrlData } = supabaseClient.storage
             .from('hospital-photos')
             .getPublicUrl(fileName);
           imageUrl = publicUrlData.publicUrl;
         }
       }
 
-      await supabase.from('hospitals').update({
+      await supabaseClient.from('hospitals').update({
         is_checked: true,
         checked_at: new Date().toISOString(),
         latitude: currentLat,
@@ -280,7 +282,7 @@
     }
 
     async function resetCheckin(id) {
-      await supabase.from('hospitals').update({
+      await supabaseClient.from('hospitals').update({
         is_checked: false, checked_at: null, latitude: null, longitude: null, image_url: null, note: null
       }).eq('id', id);
       fetchHospitals();

@@ -14,10 +14,37 @@
   <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    /* Custom Marker Styles */
+    .custom-pin {
+      width: 24px;
+      height: 24px;
+      border-radius: 50% 50% 50% 0;
+      position: absolute;
+      transform: rotate(-45deg);
+      left: 50%;
+      top: 50%;
+      margin: -15px 0 0 -15px;
+      border: 2px solid white;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+    }
+    .custom-pin::after {
+      content: '';
+      width: 8px;
+      height: 8px;
+      margin: 6px 0 0 6px;
+      background: white;
+      position: absolute;
+      border-radius: 50%;
+    }
+    .pin-red { background: #ef4444; }
+    .pin-green { background: #10b981; }
+  </style>
 </head>
 <body class="bg-slate-100 min-h-screen font-sans text-slate-800 flex flex-col">
 
-  <!-- Navigation Bar Header -->
+  <!-- Header -->
   <header class="bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-800 text-white shadow-lg sticky top-0 z-30">
     <div class="max-w-7xl mx-auto px-4 py-3 sm:px-6 flex items-center justify-between">
       <div class="flex items-center space-x-3">
@@ -26,64 +53,64 @@
         </div>
         <div>
           <h1 class="text-lg sm:text-xl font-bold tracking-wide">รายงานการลงพื้นที่ รพ.สต.</h1>
-          <p class="text-xs text-blue-100 hidden sm:block">ระบบติดตามการปฏิบัติงาน เช็คอินพิกัด GPS และรูปถ่าย</p>
+          <p class="text-xs text-blue-100 hidden sm:block">ระบบติดตามการปฏิบัติงาน เช็คอินพิกัด GPS และแผนที่จำแนกสถานะ</p>
         </div>
       </div>
-      <div class="text-right">
+      <div>
         <span class="text-xs bg-blue-900/50 border border-blue-400/30 px-3 py-1 rounded-full text-blue-100">
-          📍 อัปเดตข้อมูลแบบ เรียลไทม์
+          📍 อัปเดตข้อมูลเรียลไทม์
         </span>
       </div>
     </div>
   </header>
 
-  <!-- Main Responsive Container -->
+  <!-- Main Container -->
   <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
       
-      <!-- ================= LEFT COLUMN: Dashboard & Map (Desktop: 5/12 cols) ================= -->
+      <!-- LEFT COLUMN: Dashboard & Map -->
       <section class="lg:col-span-5 space-y-5 lg:sticky lg:top-20">
         
         <!-- Summary Cards -->
         <div class="grid grid-cols-3 gap-3">
-          <div class="bg-white border border-slate-200/80 rounded-2xl p-4 text-center shadow-sm hover:shadow-md transition">
-            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">ทั้งหมด</p>
+          <div class="bg-white border border-slate-200/80 rounded-2xl p-4 text-center shadow-sm">
+            <p class="text-xs font-semibold text-slate-500 uppercase">ทั้งหมด</p>
             <p id="stat-total" class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">0</p>
             <p class="text-[11px] text-slate-400">แห่ง</p>
           </div>
-          <div class="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 text-center shadow-sm hover:shadow-md transition">
-            <p class="text-xs font-semibold text-emerald-600 uppercase tracking-wider">ลงพื้นที่แล้ว</p>
+          <div class="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 text-center shadow-sm">
+            <p class="text-xs font-semibold text-emerald-600 uppercase">ลงพื้นที่แล้ว</p>
             <p id="stat-checked" class="text-2xl sm:text-3xl font-extrabold text-emerald-700 mt-1">0</p>
             <p id="stat-percent" class="text-[11px] font-semibold text-emerald-600">0%</p>
           </div>
-          <div class="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 text-center shadow-sm hover:shadow-md transition">
-            <p class="text-xs font-semibold text-amber-600 uppercase tracking-wider">คงเหลือ</p>
+          <div class="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 text-center shadow-sm">
+            <p class="text-xs font-semibold text-amber-600 uppercase">คงเหลือ</p>
             <p id="stat-pending" class="text-2xl sm:text-3xl font-extrabold text-amber-700 mt-1">0</p>
             <p class="text-[11px] font-semibold text-amber-600">แห่ง</p>
           </div>
         </div>
 
-        <!-- Progress Bar Card -->
+        <!-- Progress Bar -->
         <div class="bg-white border border-slate-200/80 rounded-2xl p-4 space-y-2 shadow-sm">
           <div class="flex justify-between items-center text-xs font-bold text-slate-700">
-            <span class="flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              ความก้าวหน้าการลงพื้นที่
-            </span>
+            <span>ความก้าวหน้าการลงพื้นที่</span>
             <span id="progress-text" class="text-sm font-extrabold text-emerald-600">0%</span>
           </div>
           <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden p-0.5 border border-slate-200">
-            <div id="progress-bar" class="bg-emerald-500 h-full rounded-full transition-all duration-700 ease-out" style="width: 0%"></div>
+            <div id="progress-bar" class="bg-emerald-500 h-full rounded-full transition-all duration-700" style="width: 0%"></div>
           </div>
         </div>
 
-        <!-- Interactive Map Container -->
+        <!-- Map Container -->
         <div class="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm space-y-3">
           <div class="flex items-center justify-between">
             <h2 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-              📍 แผนที่ตำแหน่ง รพ.สต.
+              📍 แผนที่แสดงตำแหน่ง รพ.สต.
             </h2>
-            <span class="text-[11px] text-slate-400">คลิกที่หมุดเพื่อดูชื่อ</span>
+            <div class="flex gap-2 text-[11px]">
+              <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> ยังไม่ทำ</span>
+              <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> ทำแล้ว</span>
+            </div>
           </div>
           <div id="map" class="w-full h-64 sm:h-80 lg:h-96 rounded-xl border border-slate-200 shadow-inner z-0"></div>
         </div>
@@ -91,23 +118,28 @@
       </section>
 
 
-      <!-- ================= RIGHT COLUMN: Checklist & Content (Desktop: 7/12 cols) ================= -->
+      <!-- RIGHT COLUMN: Checklist & Filters -->
       <section class="lg:col-span-7 bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
         
-        <!-- Controls & Header -->
+        <!-- Controls & Filters Header -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-3">
           <div>
-            <h2 class="text-base sm:text-lg font-bold text-slate-800">📝 รายชื่อ รพ.สต. ในพื้นที่</h2>
-            <p class="text-xs text-slate-400">คลิกที่ช่องทำเครื่องหมายเพื่อทำการเช็คอิน</p>
+            <h2 class="text-base sm:text-lg font-bold text-slate-800">📝 รายชื่อ รพ.สต.</h2>
+            <p class="text-xs text-slate-400">เลือกกรองข้อมูลเพื่อซ่อนหรือแสดงรายการตามสถานะ</p>
           </div>
           
-          <div class="flex items-center gap-2">
-            <label for="sort-select" class="text-xs text-slate-500 font-medium whitespace-nowrap">จัดเรียง:</label>
-            <select id="sort-select" onchange="fetchHospitals()" class="w-full sm:w-auto text-xs border border-slate-200 rounded-xl p-2 bg-slate-50/80 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium">
-              <option value="id-asc">เรียงตามลำดับ ID (1-9)</option>
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <!-- Filter Option -->
+            <select id="filter-select" onchange="fetchHospitals()" class="text-xs border border-slate-200 rounded-xl p-2 bg-slate-50 text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+              <option value="pending">🔴 ยังไม่ได้ลงพื้นที่ (ซ่อนรายการที่ทำแล้ว)</option>
+              <option value="checked">🟢 ลงพื้นที่แล้วเท่านั้น</option>
+              <option value="all">🌐 แสดงรายการทั้งหมด</option>
+            </select>
+
+            <!-- Sorting Option -->
+            <select id="sort-select" onchange="fetchHospitals()" class="text-xs border border-slate-200 rounded-xl p-2 bg-slate-50 text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+              <option value="id-asc">เรียงตามลำดับ ID</option>
               <option value="name-asc">เรียงตามชื่อ (ก-ฮ)</option>
-              <option value="status-pending">ยังไม่ได้ลงพื้นที่ขึ้นก่อน</option>
-              <option value="status-checked">ลงพื้นที่แล้วขึ้นก่อน</option>
             </select>
           </div>
         </div>
@@ -116,7 +148,7 @@
         <div id="hospital-list" class="space-y-3">
           <div class="flex flex-col items-center justify-center py-12 space-y-3">
             <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            <p class="text-xs text-slate-400 font-medium">กำลังเชื่อมต่อฐานข้อมูล...</p>
+            <p class="text-xs text-slate-400 font-medium">กำลังโหลดข้อมูล...</p>
           </div>
         </div>
 
@@ -125,14 +157,9 @@
     </div>
   </main>
 
-  <!-- Footer -->
-  <footer class="mt-auto bg-slate-200/60 border-t border-slate-200 py-3 text-center text-xs text-slate-500">
-    <p>© ระบบติดตามการลงพื้นที่ รพ.สต. — GitHub Pages & Supabase</p>
-  </footer>
-
   <!-- Check-in Modal -->
-  <div id="checkin-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity">
-    <div class="bg-white rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl transform transition-all border border-slate-100">
+  <div id="checkin-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl border border-slate-100">
       
       <div class="flex items-center justify-between border-b pb-3">
         <h2 id="modal-title" class="text-base font-bold text-slate-800 flex items-center gap-2">
@@ -142,7 +169,6 @@
       </div>
       
       <div class="space-y-4">
-        <!-- GPS Status Card -->
         <div class="bg-blue-50/60 border border-blue-100 rounded-xl p-3">
           <label class="block text-xs font-semibold text-blue-900 mb-1">พิกัด GPS ปัจจุบัน</label>
           <p id="gps-status" class="text-xs text-blue-700 font-medium flex items-center gap-1.5">
@@ -151,26 +177,23 @@
           </p>
         </div>
 
-        <!-- Photo Upload -->
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1.5">ถ่ายภาพ / แนบรูปถ่ายสถานที่</label>
           <input type="file" id="photo-input" accept="image/*" capture="environment" 
                  class="w-full text-xs text-slate-500 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-slate-200 rounded-xl cursor-pointer">
         </div>
 
-        <!-- Notes -->
         <div>
           <label class="block text-xs font-semibold text-slate-700 mb-1.5">หมายเหตุ / ผลการปฏิบัติงาน</label>
-          <textarea id="note-input" rows="3" class="w-full border border-slate-200 rounded-xl p-3 text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" placeholder="พิมพ์รายละเอียดเพิ่มเติม..."></textarea>
+          <textarea id="note-input" rows="3" class="w-full border border-slate-200 rounded-xl p-3 text-xs focus:ring-2 focus:ring-blue-500 outline-none" placeholder="พิมพ์รายละเอียดเพิ่มเติม..."></textarea>
         </div>
       </div>
 
-      <!-- Modal Footer Action Buttons -->
       <div class="flex items-center justify-end gap-3 pt-2">
-        <button onclick="closeModal()" class="px-5 py-2.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">
+        <button onclick="closeModal()" class="px-5 py-2.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl">
           ยกเลิก
         </button>
-        <button id="save-btn" onclick="saveCheckin()" class="px-5 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-xl shadow-md shadow-blue-500/20 transition">
+        <button id="save-btn" onclick="saveCheckin()" class="px-5 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md">
           บันทึกข้อมูล
         </button>
       </div>
@@ -178,13 +201,10 @@
     </div>
   </div>
 
-  <!-- JavaScript Integration -->
+  <!-- JavaScript Logic -->
   <script>
-    // Supabase Credentials
     const SUPABASE_URL = 'https://gvakjpngvhftmuzsxpyw.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_Z27zX48J2cPc2i3Xe1z_DA_MoLrTzGG';
-    
-    // Create Supabase Client (Variable named supabaseClient to avoid collision)
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let currentHospitalId = null;
@@ -192,6 +212,23 @@
     let currentLng = null;
     let map = null;
     let markers = [];
+
+    // Custom Map Pin Icons (Red & Green)
+    const redIcon = L.divIcon({
+      className: 'custom-pin-container',
+      html: `<div class="custom-pin pin-red"></div>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 30],
+      popupAnchor: [0, -28]
+    });
+
+    const greenIcon = L.divIcon({
+      className: 'custom-pin-container',
+      html: `<div class="custom-pin pin-green"></div>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 30],
+      popupAnchor: [0, -28]
+    });
 
     function initMap() {
       map = L.map('map').setView([17.0078, 99.8234], 11);
@@ -201,95 +238,128 @@
     }
 
     async function fetchHospitals() {
+      const filterVal = document.getElementById('filter-select').value;
       const sortVal = document.getElementById('sort-select').value;
-      let query = supabaseClient.from('hospitals').select('*');
 
-      if (sortVal === 'id-asc') {
-        query = query.order('id', { ascending: true });
-      } else if (sortVal === 'name-asc') {
-        query = query.order('name', { ascending: true });
-      } else if (sortVal === 'status-pending') {
-        query = query.order('is_checked', { ascending: true }).order('id', { ascending: true });
-      } else if (sortVal === 'status-checked') {
-        query = query.order('is_checked', { ascending: false }).order('id', { ascending: true });
-      }
-
-      const { data, error } = await query;
+      // ดึงข้อมูลทั้งหมดเพื่อคำนวณ Dashboard Summary
+      const { data: allData, error: fetchErr } = await supabaseClient.from('hospitals').select('*');
       
-      if (error) {
-        console.error("Supabase Fetch Error:", error);
+      if (fetchErr) {
+        console.error("Supabase Error:", fetchErr);
         document.getElementById('hospital-list').innerHTML = `
           <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
-            <p class="text-xs text-red-600 font-semibold">ไม่สามารถโหลดข้อมูลได้ (${error.message || 'Error'})</p>
+            <p class="text-xs text-red-600 font-semibold">ไม่สามารถโหลดข้อมูลได้ (${fetchErr.message})</p>
           </div>`;
         return;
       }
 
-      const total = data.length;
-      const checked = data.filter(item => item.is_checked).length;
-      const pending = total - checked;
-      const percent = total > 0 ? Math.round((checked / total) * 100) : 0;
+      // คำนวณสถิติ
+      const total = allData.length;
+      const checkedCount = allData.filter(item => item.is_checked).length;
+      const pendingCount = total - checkedCount;
+      const percent = total > 0 ? Math.round((checkedCount / total) * 100) : 0;
 
       document.getElementById('stat-total').innerText = total;
-      document.getElementById('stat-checked').innerText = checked;
-      document.getElementById('stat-pending').innerText = pending;
+      document.getElementById('stat-checked').innerText = checkedCount;
+      document.getElementById('stat-pending').innerText = pendingCount;
       document.getElementById('stat-percent').innerText = `${percent}%`;
       document.getElementById('progress-text').innerText = `${percent}%`;
       document.getElementById('progress-bar').style.width = `${percent}%`;
 
-      const listDiv = document.getElementById('hospital-list');
-      listDiv.innerHTML = '';
+      // อัปเดตหมุดแผนที่ (แสดงหมุดของทุกสถานที่ พร้อมเปลี่ยนสี เขียว/แดง)
       markers.forEach(m => map.removeLayer(m));
       markers = [];
       const bounds = [];
 
-      data.forEach(item => {
-        const div = document.createElement('div');
-        div.className = `p-4 border rounded-2xl space-y-3 transition-all duration-200 ${
-          item.is_checked 
-            ? 'bg-emerald-50/40 border-emerald-200/80 shadow-sm' 
-            : 'bg-white border-slate-200/90 hover:border-slate-300 shadow-sm'
-        }`;
-        
-        let content = `
-          <div class="flex items-start justify-between gap-3">
-            <div class="space-y-0.5">
-              <p class="font-bold text-sm ${item.is_checked ? 'text-emerald-950' : 'text-slate-800'}">${item.name}</p>
-              <p class="text-xs text-slate-500 font-medium">${item.area || 'ไม่มีข้อมูลพื้นที่'}</p>
-            </div>
-            <label class="relative flex items-center p-1 rounded-lg cursor-pointer">
-              <input type="checkbox" ${item.is_checked ? 'checked' : ''} 
-                     onchange="handleCheckChange(${item.id}, this.checked)"
-                     class="w-6 h-6 text-emerald-600 rounded-lg focus:ring-emerald-500 border-slate-300 cursor-pointer accent-emerald-600 transition">
-            </label>
-          </div>
-        `;
-
-        if (item.is_checked) {
-          content += `
-            <div class="text-xs text-slate-600 bg-white p-3 rounded-xl border border-emerald-100/80 space-y-2 shadow-inner">
-              <div class="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-500">
-                <span>⏰ เวลาเช็คอิน: ${new Date(item.checked_at).toLocaleString('th-TH')}</span>
-                ${item.latitude ? `<a href="https://maps.google.com/?q=${item.latitude},${item.longitude}" target="_blank" class="text-blue-600 hover:text-blue-700 font-bold underline flex items-center gap-0.5">📍 แผนที่ Google</a>` : ''}
-              </div>
-              ${item.note ? `<p class="text-slate-700 pt-1 border-t border-slate-100">📝 <span class="font-medium">หมายเหตุ:</span> ${item.note}</p>` : ''}
-              ${item.image_url ? `<div class="pt-1"><img src="${item.image_url}" class="w-full h-40 sm:h-48 object-cover rounded-xl border border-slate-200 shadow-sm"></div>` : ''}
-            </div>
-          `;
-        }
-
-        div.innerHTML = content;
-        listDiv.appendChild(div);
-
+      allData.forEach(item => {
         if (item.latitude && item.longitude) {
-          const marker = L.marker([item.latitude, item.longitude]).addTo(map);
-          marker.bindPopup(`<div class="text-xs font-sans"><b>${item.name}</b></div>`);
+          const icon = item.is_checked ? greenIcon : redIcon;
+          const statusText = item.is_checked ? '🟢 ลงพื้นที่แล้ว' : '🔴 ยังไม่ได้ลงพื้นที่';
+          
+          const marker = L.marker([item.latitude, item.longitude], { icon: icon }).addTo(map);
+          marker.bindPopup(`
+            <div class="text-xs font-sans space-y-1">
+              <b class="text-sm">${item.name}</b>
+              <p class="text-slate-500">${item.area || ''}</p>
+              <p class="font-semibold">${statusText}</p>
+            </div>
+          `);
           markers.push(marker);
           bounds.push([item.latitude, item.longitude]);
         }
       });
 
       if (bounds.length > 0) map.fitBounds(bounds, { padding: [30, 30] });
+
+      // กรองข้อมูลรายการที่จะแสดงใน Checklist
+      let displayData = [...allData];
+      if (filterVal === 'pending') {
+        displayData = displayData.filter(item => !item.is_checked);
+      } else if (filterVal === 'checked') {
+        displayData = displayData.filter(item => item.is_checked);
+      }
+
+      // จัดเรียงข้อมูล
+      if (sortVal === 'id-asc') {
+        displayData.sort((a, b) => a.id - b.id);
+      } else if (sortVal === 'name-asc') {
+        displayData.sort((a, b) => a.name.localeCompare(b.name, 'th'));
+      }
+
+      // แสดงผลรายการ
+      const listDiv = document.getElementById('hospital-list');
+      listDiv.innerHTML = '';
+
+      if (displayData.length === 0) {
+        listDiv.innerHTML = `
+          <div class="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <p class="text-sm font-semibold text-slate-500">🎉 ไม่พบรายการในหมวดนี้</p>
+            <p class="text-xs text-slate-400 mt-1">ทุกสถานที่ได้รับการปฏิบัติงานตามเงื่อนไขเรียบร้อยแล้ว</p>
+          </div>`;
+        return;
+      }
+
+      displayData.forEach(item => {
+        const div = document.createElement('div');
+        div.className = `p-4 border rounded-2xl space-y-3 transition-all ${
+          item.is_checked 
+            ? 'bg-emerald-50/40 border-emerald-200 shadow-sm' 
+            : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
+        }`;
+        
+        let content = `
+          <div class="flex items-start justify-between gap-3">
+            <div class="space-y-0.5">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full ${item.is_checked ? 'bg-emerald-500' : 'bg-red-500'}"></span>
+                <p class="font-bold text-sm ${item.is_checked ? 'text-emerald-950' : 'text-slate-800'}">${item.name}</p>
+              </div>
+              <p class="text-xs text-slate-500 font-medium pl-4.5">${item.area || 'ไม่มีข้อมูลพื้นที่'}</p>
+            </div>
+            <label class="relative flex items-center p-1 rounded-lg cursor-pointer">
+              <input type="checkbox" ${item.is_checked ? 'checked' : ''} 
+                     onchange="handleCheckChange(${item.id}, this.checked)"
+                     class="w-6 h-6 text-emerald-600 rounded-lg border-slate-300 cursor-pointer accent-emerald-600">
+            </label>
+          </div>
+        `;
+
+        if (item.is_checked) {
+          content += `
+            <div class="text-xs text-slate-600 bg-white p-3 rounded-xl border border-emerald-100 space-y-2 shadow-inner">
+              <div class="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-500">
+                <span>⏰ เวลาเช็คอิน: ${new Date(item.checked_at).toLocaleString('th-TH')}</span>
+                ${item.latitude ? `<a href="https://maps.google.com/?q=${item.latitude},${item.longitude}" target="_blank" class="text-blue-600 font-bold underline">📍 ดูบน Google Maps</a>` : ''}
+              </div>
+              ${item.note ? `<p class="text-slate-700 pt-1 border-t border-slate-100">📝 <span class="font-medium">หมายเหตุ:</span> ${item.note}</p>` : ''}
+              ${item.image_url ? `<div class="pt-1"><img src="${item.image_url}" class="w-full h-40 object-cover rounded-xl border border-slate-200"></div>` : ''}
+            </div>
+          `;
+        }
+
+        div.innerHTML = content;
+        listDiv.appendChild(div);
+      });
     }
 
     function handleCheckChange(id, isChecked) {
@@ -370,7 +440,6 @@
       fetchHospitals();
     }
 
-    // Initialize Map and Fetch Initial Data
     initMap();
     fetchHospitals();
   </script>

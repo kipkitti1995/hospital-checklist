@@ -53,7 +53,7 @@
         </div>
         <div>
           <h1 class="text-lg sm:text-xl font-bold tracking-wide">รายงานการลงพื้นที่ รพ.สต.</h1>
-          <p class="text-xs text-blue-100 hidden sm:block">ระบบติดตามการปฏิบัติงาน กรองพื้นที่ จังหวัด/อำเภอ/ตำบล และแสดงพิกัดแผนที่</p>
+          <p class="text-xs text-blue-100 hidden sm:block">ระบบติดตามการปฏิบัติงาน กรองพื้นที่ จังหวัด/อำเภอ/ตำบล/ประเภท และแสดงพิกัดแผนที่</p>
         </div>
       </div>
       <div>
@@ -125,12 +125,12 @@
           <div class="flex items-center justify-between">
             <div>
               <h2 class="text-base sm:text-lg font-bold text-slate-800">📝 รายชื่อ รพ.สต.</h2>
-              <p class="text-xs text-slate-400">เลือกกรองตาม จังหวัด, อำเภอ, ตำบล และสถานะการลงพื้นที่</p>
+              <p class="text-xs text-slate-400">เลือกกรองตาม จังหวัด, อำเภอ, ตำบล, ประเภท และสถานะการลงพื้นที่</p>
             </div>
           </div>
 
-          <!-- Section: Geographic Filters (จังหวัด/อำเภอ/ตำบล) -->
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
+          <!-- Section: Geographic & Type Filters (จังหวัด/อำเภอ/ตำบล/ประเภท) -->
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
             <!-- Filter Province -->
             <div>
               <label class="block text-[11px] font-bold text-slate-500 mb-1">🏛️ จังหวัด</label>
@@ -152,6 +152,14 @@
               <label class="block text-[11px] font-bold text-slate-500 mb-1">🏡 ตำบล</label>
               <select id="subdistrict-select" onchange="applyFilters()" class="w-full text-xs border border-slate-200 rounded-xl p-2 bg-white text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
                 <option value="">-- ทุกตำบล --</option>
+              </select>
+            </div>
+
+            <!-- Filter Type -->
+            <div>
+              <label class="block text-[11px] font-bold text-slate-500 mb-1">🏥 ประเภท</label>
+              <select id="type-select" onchange="applyFilters()" class="w-full text-xs border border-slate-200 rounded-xl p-2 bg-white text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+                <option value="">-- ทุกประเภท --</option>
               </select>
             </div>
           </div>
@@ -240,14 +248,13 @@
     const SUPABASE_KEY = 'sb_publishable_Z27zX48J2cPc2i3Xe1z_DA_MoLrTzGG';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let rawHospitals = []; // ข้อมูลทั้งหมดที่ดึงมาจาก Supabase
+    let rawHospitals = [];
     let currentHospitalId = null;
     let actualLat = null;
     let actualLng = null;
     let map = null;
     let markers = [];
 
-    // Custom Map Pin Icons (Red & Green)
     const redIcon = L.divIcon({
       className: 'custom-pin-container',
       html: `<div class="custom-pin pin-red"></div>`,
@@ -265,13 +272,12 @@
     });
 
     function initMap() {
-      map = L.map('map').setView([17.0078, 99.8234], 10);
+      map = L.map('map').setView([17.8, 100.2], 9);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
     }
 
-    // โหลดข้อมูลครั้งแรกจาก Supabase
     async function loadInitialData() {
       const { data, error } = await supabaseClient.from('hospitals').select('*');
       if (error) {
@@ -285,10 +291,10 @@
 
       rawHospitals = data || [];
       populateProvinces();
+      populateTypes();
       applyFilters();
     }
 
-    // สร้างตัวเลือก จังหวัด ใน Dropdown
     function populateProvinces() {
       const provinceSelect = document.getElementById('province-select');
       const provinces = [...new Set(rawHospitals.map(item => item.province).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'th'));
@@ -301,13 +307,21 @@
       populateDistricts();
     }
 
-    // เมื่อเปลี่ยน จังหวัด ให้เปลี่ยนตัวเลือก อำเภอ
+    function populateTypes() {
+      const typeSelect = document.getElementById('type-select');
+      const types = [...new Set(rawHospitals.map(item => item.type).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'th'));
+      
+      typeSelect.innerHTML = '<option value="">-- ทุกประเภท --</option>';
+      types.forEach(t => {
+        typeSelect.innerHTML += `<option value="${t}">${t}</option>`;
+      });
+    }
+
     function onProvinceChange() {
       populateDistricts();
       applyFilters();
     }
 
-    // สร้างตัวเลือก อำเภอ ใน Dropdown
     function populateDistricts() {
       const selectedProvince = document.getElementById('province-select').value;
       const districtSelect = document.getElementById('district-select');
@@ -327,13 +341,11 @@
       populateSubdistricts();
     }
 
-    // เมื่อเปลี่ยน อำเภอ ให้เปลี่ยนตัวเลือก ตำบล
     function onDistrictChange() {
       populateSubdistricts();
       applyFilters();
     }
 
-    // สร้างตัวเลือก ตำบล ใน Dropdown
     function populateSubdistricts() {
       const selectedProvince = document.getElementById('province-select').value;
       const selectedDistrict = document.getElementById('district-select').value;
@@ -351,16 +363,16 @@
       });
     }
 
-    // กรองและประมวลผลข้อมูลแสดงผล
     function applyFilters() {
       const selectedProvince = document.getElementById('province-select').value;
       const selectedDistrict = document.getElementById('district-select').value;
       const selectedSubdistrict = document.getElementById('subdistrict-select').value;
+      const selectedType = document.getElementById('type-select').value;
       const filterVal = document.getElementById('filter-select').value;
       const sortVal = document.getElementById('sort-select').value;
       const searchText = document.getElementById('search-input').value.trim().toLowerCase();
 
-      // 1. คำนวณ Dashboard Summary
+      // Dashboard Calculations
       const total = rawHospitals.length;
       const checkedCount = rawHospitals.filter(item => item.is_checked).length;
       const pendingCount = total - checkedCount;
@@ -373,12 +385,13 @@
       document.getElementById('progress-text').innerText = `${percent}%`;
       document.getElementById('progress-bar').style.width = `${percent}%`;
 
-      // 2. กรองข้อมูลตามพื้นที่และเงื่อนไข
+      // Filter Logic
       let filteredData = [...rawHospitals];
 
       if (selectedProvince) filteredData = filteredData.filter(item => item.province === selectedProvince);
       if (selectedDistrict) filteredData = filteredData.filter(item => item.district === selectedDistrict);
       if (selectedSubdistrict) filteredData = filteredData.filter(item => item.subdistrict === selectedSubdistrict);
+      if (selectedType) filteredData = filteredData.filter(item => item.type === selectedType);
 
       if (filterVal === 'pending') {
         filteredData = filteredData.filter(item => !item.is_checked);
@@ -392,7 +405,7 @@
         );
       }
 
-      // 3. จัดเรียงข้อมูล
+      // Sort
       if (sortVal === 'id-asc') {
         filteredData.sort((a, b) => a.id - b.id);
       } else if (sortVal === 'name-asc') {
@@ -401,16 +414,16 @@
         filteredData.sort((a, b) => (a.district || '').localeCompare(b.district || '', 'th'));
       }
 
-      // 4. อัปเดตแผนที่ (แสดงเฉพาะรายการที่กรองแล้ว)
+      // Map Markers
       markers.forEach(m => map.removeLayer(m));
       markers = [];
       const bounds = [];
 
       filteredData.forEach(item => {
-        const lat = item.latitude;
-        const lng = item.longitude;
+        const lat = parseFloat(item.latitude);
+        const lng = parseFloat(item.longitude);
 
-        if (lat && lng) {
+        if (!isNaN(lat) && !isNaN(lng)) {
           const icon = item.is_checked ? greenIcon : redIcon;
           const statusBadge = item.is_checked ? '🟢 ลงพื้นที่แล้ว' : '🔴 ยังไม่ได้ลงพื้นที่';
           const address = `ต.${item.subdistrict || '-'} อ.${item.district || '-'} จ.${item.province || '-'}`;
@@ -431,7 +444,7 @@
 
       if (bounds.length > 0) map.fitBounds(bounds, { padding: [30, 30] });
 
-      // 5. แสดงรายการใน Checklist
+      // List Render
       const listDiv = document.getElementById('hospital-list');
       listDiv.innerHTML = '';
 
@@ -463,12 +476,13 @@
               <div class="flex items-center gap-2">
                 <span class="w-2.5 h-2.5 rounded-full ${item.is_checked ? 'bg-emerald-500' : 'bg-red-500'}"></span>
                 <p class="font-bold text-sm ${item.is_checked ? 'text-emerald-950' : 'text-slate-800'}">${item.name}</p>
+                ${item.type ? `<span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-semibold">${item.type}</span>` : ''}
               </div>
               <p class="text-xs text-slate-500 font-medium pl-4.5">📍 ${fullAddress || 'ไม่มีข้อมูลที่อยู่'}</p>
               ${item.latitude && item.longitude ? `
                 <div class="pl-4.5 pt-0.5">
                   <a href="https://maps.google.com/?q=${item.latitude},${item.longitude}" target="_blank" class="text-[11px] text-blue-600 hover:underline font-semibold flex items-center gap-1">
-                    🗺️ ดูแผนที่ GPS (${item.latitude.toFixed(4)}, ${item.longitude.toFixed(4)})
+                    🗺️ ดูแผนที่ GPS (${parseFloat(item.latitude).toFixed(4)}, ${parseFloat(item.longitude).toFixed(4)})
                   </a>
                 </div>
               ` : ''}
@@ -485,7 +499,7 @@
           content += `
             <div class="text-xs text-slate-600 bg-white p-3 rounded-xl border border-emerald-100 space-y-2 shadow-inner">
               <div class="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-500">
-                <span>⏰ เวลาลงพื้นที่: ${new Date(item.checked_at).toLocaleString('th-TH')}</span>
+                <span>⏰ เวลาลงพื้นที่: ${item.checked_at ? new Date(item.checked_at).toLocaleString('th-TH') : '-'}</span>
                 ${item.actual_lat ? `<a href="https://maps.google.com/?q=${item.actual_lat},${item.actual_lng}" target="_blank" class="text-emerald-700 font-bold underline">📍 พิกัดลงพื้นที่จริง</a>` : ''}
               </div>
               ${item.note ? `<p class="text-slate-700 pt-1 border-t border-slate-100">📝 <span class="font-medium">หมายเหตุ:</span> ${item.note}</p>` : ''}

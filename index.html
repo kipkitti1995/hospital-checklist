@@ -142,9 +142,9 @@
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <input type="text" id="search-input" onkeyup="applyFilters()" placeholder="🔍 ค้นหาชื่อ รพ.สต..." class="text-xs border border-slate-200 rounded-xl p-2.5 bg-slate-50 text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
             <select id="filter-select" onchange="applyFilters()" class="text-xs border border-slate-200 rounded-xl p-2.5 bg-slate-50 text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
+              <option value="all">🌐 แสดงทั้งหมด</option>
               <option value="pending">🔴 ยังไม่ได้ลงพื้นที่</option>
               <option value="checked">🟢 ลงพื้นที่แล้วเท่านั้น</option>
-              <option value="all">🌐 แสดงทั้งหมด</option>
             </select>
             <select id="sort-select" onchange="applyFilters()" class="text-xs border border-slate-200 rounded-xl p-2.5 bg-slate-50 text-slate-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none">
               <option value="id-asc">เรียงตามลำดับ ID</option>
@@ -156,7 +156,7 @@
         <div id="hospital-list" class="space-y-3">
           <div class="flex flex-col items-center justify-center py-12 space-y-3">
             <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-            <p class="text-xs text-slate-400 font-medium">กำลังโหลดข้อมูล...</p>
+            <p class="text-xs text-slate-400 font-medium">กำลังโหลดข้อมูลจาก Supabase...</p>
           </div>
         </div>
       </section>
@@ -166,7 +166,6 @@
 
   <div id="checkin-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl border border-slate-100">
-      
       <div class="flex items-center justify-between border-b pb-3">
         <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
           <span>📍</span> บันทึกการลงพื้นที่เช็คอิน
@@ -208,11 +207,11 @@
           บันทึกข้อมูล
         </button>
       </div>
-
     </div>
   </div>
 
   <script>
+    // ตั้งค่า URL และ Key ของคุณแล้ว
     const SUPABASE_URL = 'https://gvakjpngvhftmuzsxpyw.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_Z27zX48J2cPc2i3Xe1z_DA_MoLrTzGG';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -248,20 +247,32 @@
     }
 
     async function loadInitialData() {
-      const { data, error } = await supabaseClient.from('hospitals').select('*');
-      if (error) {
-        console.error("Supabase Fetch Error:", error);
-        document.getElementById('hospital-list').innerHTML = `
-          <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
-            <p class="text-xs text-red-600 font-semibold">ไม่สามารถโหลดข้อมูลได้ (${error.message})</p>
-          </div>`;
-        return;
-      }
+      try {
+        const { data, error } = await supabaseClient.from('hospitals').select('*');
+        
+        if (error) throw error;
 
-      rawHospitals = data || [];
-      populateProvinces();
-      populateTypes();
-      applyFilters();
+        if (!data || data.length === 0) {
+          document.getElementById('hospital-list').innerHTML = `
+            <div class="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center space-y-2">
+              <p class="text-sm font-bold text-amber-800">⚠️ ไม่พบข้อมูลในตาราง hospitals</p>
+              <p class="text-xs text-amber-600">กรุณาตรวจสอบว่าได้ทำการ INSERT ข้อมูลใน Supabase แล้วหรือยัง</p>
+            </div>`;
+          return;
+        }
+
+        rawHospitals = data;
+        populateProvinces();
+        populateTypes();
+        applyFilters();
+      } catch (err) {
+        console.error("Supabase Error:", err);
+        document.getElementById('hospital-list').innerHTML = `
+          <div class="bg-red-50 border border-red-200 rounded-2xl p-6 text-center space-y-2">
+            <p class="text-sm font-bold text-red-700">❌ ดึงข้อมูลไม่สำเร็จ</p>
+            <p class="text-xs text-red-600">${err.message || 'กรุณาตรวจสอบการตั้งค่า RLS ใน Supabase'}</p>
+          </div>`;
+      }
     }
 
     function populateProvinces() {
@@ -358,7 +369,6 @@
       if (sortVal === 'id-asc') filteredData.sort((a, b) => a.id - b.id);
       else if (sortVal === 'name-asc') filteredData.sort((a, b) => a.name.localeCompare(b.name, 'th'));
 
-      // Markers
       markers.forEach(m => map.removeLayer(m));
       markers = [];
       const bounds = [];
@@ -388,7 +398,6 @@
 
       if (bounds.length > 0) map.fitBounds(bounds, { padding: [30, 30] });
 
-      // Render List
       const listDiv = document.getElementById('hospital-list');
       listDiv.innerHTML = '';
 
@@ -509,9 +518,7 @@
           .from('hospital-photos')
           .upload(fileName, file);
 
-        if (uploadError) {
-          console.error("Upload Error:", uploadError);
-        } else {
+        if (!uploadError) {
           const { data: publicUrlData } = supabaseClient.storage
             .from('hospital-photos')
             .getPublicUrl(fileName);
